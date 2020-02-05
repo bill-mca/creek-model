@@ -465,11 +465,24 @@ draw.levels.chart <- function(input.data.frame,
          adj=c(-0.2,1.2))
     ## This draws vertical lines proportional in height to the structures:
     draw.vertical.lines(distance.to.bottom, thalweg.elevation, spill.elevation)
+    
+    ## Check if sites are lower on the left or right of the page:
+    if(thalweg.elevation[1] < thalweg.elevation[length(thalweg.elevation)]){
     ## This draws horizontal lines representing the backwater of each structure
     ## It'll look weird if the structures don't top-to-tail:
-    draw.horizontal.lines(distance.to.bottom[1:(length(distance.to.bottom)-1)],
-                          distance.to.bottom[2:length(distance.to.bottom)],
-                          spill.elevation[1:(length(spill.elevation)-1)])   
+        draw.horizontal.lines(
+            distance.to.bottom[1:(length(distance.to.bottom)-1)],
+            distance.to.bottom[2:length(distance.to.bottom)],
+            spill.elevation[1:(length(spill.elevation)-1)]
+        )
+    }
+    else {
+        draw.horizontal.lines(
+            distance.to.bottom[2:(length(distance.to.bottom))],
+            distance.to.bottom[1:length(distance.to.bottom)-1],
+            spill.elevation[2:(length(spill.elevation))]
+        )
+    }
     ### Draw the X axis
     axis(1, at=c(0, tail(distance.to.bottom, 1)), col='#4e4e4e', lty=1,
          lwd=2, labels=F)
