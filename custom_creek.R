@@ -26,6 +26,7 @@ model.output <- model.from.transects(transects, NULL, '', '')
 hydrau <- model.calculation(cbind(model.output, 
                                   shr[ , c('gradient', 
                                            'pi.gradient', 
-                                           'roughness')]))
+                                           'roughness',
+                                           'pi.roughness')]))
 
 hydraulics.output(hydrau)

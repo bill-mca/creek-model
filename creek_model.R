@@ -341,10 +341,11 @@ extract.model.parameters <- function(transects, sc.ordering=NULL){
 
 
 model.calculation <- function(parameters, gradient=NULL, pi.gradient=NULL,
-                              roughness=NULL){
+                              roughness=NULL, pi.roughness=NULL){
     if(!is.null(gradient)){ parameters$gradient <- gradient }
     if(!is.null(pi.gradient)){ parameters$pi.gradient <- pi.gradient }
     if(!is.null(roughness)){ parameters$roughness <- roughness }
+    if(!is.null(pi.roughness)){ parameters$pi.roughness <- pi.roughness }
     parameters$hydraulic.radius <- parameters$xsec.area / parameters$wp.length
     parameters$pi.hydraulic.radius <-
         parameters$pi.xsec.area / parameters$pi.wp.length
@@ -352,7 +353,7 @@ model.calculation <- function(parameters, gradient=NULL, pi.gradient=NULL,
         with(parameters, ((hydraulic.radius^(2/3))*(gradient^(1/2)))/roughness)
     parameters$pi.velocity <-
         with(parameters, ((pi.hydraulic.radius^(2/3))*(pi.gradient^(1/2)))
-             /roughness)
+             /pi.roughness)
     parameters$discharge <- with(parameters, velocity*xsec.area)
     parameters$pi.discharge <- with(parameters, pi.velocity*pi.xsec.area)
     parameters$traction <- with(parameters, 9806 * depth * gradient)
