@@ -66,7 +66,7 @@ get.thalweg <- function(coords){
        #takes coorinates and returns the thalweg
     return(min(coords[ , 2]))}
 
-    
+
 transect.model <- function(transect.coords, topbank.elevation,
                            spill.elevation=NA, thalweg.elevation=NA,
                            distance.to.bottom=NA, site.code=''){
@@ -77,7 +77,7 @@ transect.model <- function(transect.coords, topbank.elevation,
     ### of the page. Wherever this code refers to left or right banks IT IS
     ### REFERRING TO PAGE SIDE not the true left or right bank.
     ### I wrote the original version before I was familiar with the convention.
-    thalweg.index <- which.min(transect.coords[ , 2])  
+    thalweg.index <- which.min(transect.coords[ , 2])
     tmp.thalweg.elevation <- min(transect.coords[ , 2])
     if(!any(transect.coords[1:thalweg.index , 2] >= topbank.elevation)){
         stop(paste('specified topbank elevation is higher than the right bank'))
@@ -126,7 +126,7 @@ transect.model <- function(transect.coords, topbank.elevation,
         r.spill.index <- NA
     } else {
         ### else if a structure height has been specified {
-        ### first decide which point is at the spill height of the proposed 
+        ### first decide which point is at the spill height of the proposed
         ### structure
         l.spill.index <- which(transect.coords[1:thalweg.index , 2]
                           >= spill.elevation)
@@ -143,7 +143,7 @@ transect.model <- function(transect.coords, topbank.elevation,
         ### this will need to be a more complex interpolation method later
         transect.coords[l.spill.index, 2] <- spill.elevation
         transect.coords[r.spill.index, 2] <- spill.elevation
-        ### a set of coordinates of the wetted perimeter and the structure 
+        ### a set of coordinates of the wetted perimeter and the structure
         ### coords
         wp.coords <- rbind(transect.coords[l.bank.index:l.spill.index, ],
                            transect.coords[r.spill.index:r.bank.index, ])
@@ -164,11 +164,11 @@ transect.model <- function(transect.coords, topbank.elevation,
      ## points(transect.coords[thalweg.index, ], col='green')
      ## points(transect.coords[c(l.bank.index, r.bank.index), ], col='red')
      ## points(transect.coords[c(l.spill.index, r.spill.index), ], col='blue')
-    ### 
+    ###
     return(list(
         'site.code' = site.code,
         'data' = c(pre.intervention.data, post.intervention.data),
-        'transect.coords' = transect.coords, 
+        'transect.coords' = transect.coords,
         'wp.coords' = wp.coords,
         'structure.coords' = structure.coords,
         'geometry' = c(
@@ -318,28 +318,39 @@ model.from.transects <-
     }
 
 extract.model.parameters <- function(transects, sc.ordering=NULL){
-    cnnnn <- c('row.name', names(transects[[1]]$parameters),
+    cnnnn <- c('site.code', names(transects[[1]]$parameters),
                names(transects[[1]]$data))
     site.code <- sapply(transects, '[[', 'site.code')
-    #colClasses <- c('character', rep('float', length(cnnnn)-1))
-    #model.parameters <- read.table(text='', col.names=cnnnn)
-    model.parameters <- as.data.frame(as.matrix(numeric(0), ncol=length(cnnnn)))
+    model.parameters <- as.data.frame(as.matrix(numeric(0), ncol=length(cnnnn)),
+                                      stringsAsFactors=FALSE, col.names=cnnnn)
     for(transect in transects){
-        model.parameters <-
-            rbind(model.parameters,
-                  c(transect$site.code, transect$parameters, transect$data),
-                  make.row.names=FALSE)
+        RR <- with(transect,
+                    data.frame(
+                        site.code=transect$site.code,
+                        thalweg.elevation=parameters['thalweg.elevation'],
+                        topbank.elevation=parameters['topbank.elevation'],
+                        spill.elevation=parameters['spill.elevation'],
+                        distance.to.bottom=parameters['distance.to.bottom'],
+                        thalweg.elevation=parameters['thalweg.elevation'],
+                        depth=data['depth'],
+                        xsec.area=data['xsec.area'],
+                        base.channel.width.distance=data['base.channel.width.distance'],
+                        wp.length=data['wp.length'],
+                        pi.depth=data['pi.depth'],
+                        pi.xsec.area=data['pi.xsec.area'],
+                        structure.xsec.area=data['structure.xsec.area'],
+                        structure.width.distance=data['structure.width.distance'],
+                        pi.wp.length=data['pi.wp.length'],
+                        row.names=NULL,
+                        stringsAsFactors=FALSE)
+                    )
+        model.parameters <- rbind(model.parameters, RR)
     }
-    colnames(model.parameters) <- cnnnn
-    ### the code was generating row.names at one step or another
-    model.parameters <- cbind(site.code,
-                              model.parameters[ , 2:ncol(model.parameters)])
     return(model.parameters)
 }
 
-# V = [R^(2/3)s^(1/2)]/n
-
-
+### should define a named list of formulas as expressions then use
+### eval(expr, envir=data.frame(xsec.area=shr$sxec.area, wp.length=shr$wp.length
 model.calculation <- function(parameters, gradient=NULL, pi.gradient=NULL,
                               roughness=NULL, pi.roughness=NULL){
     if(!is.null(gradient)){ parameters$gradient <- gradient }
@@ -360,7 +371,7 @@ model.calculation <- function(parameters, gradient=NULL, pi.gradient=NULL,
     parameters$pi.traction <- with(parameters, 9806 * pi.depth * pi.gradient)
     parameters$stream.power <-
         with(parameters, 9806 * depth * discharge * gradient)
-    parameters$pi.stream.power <- 
+    parameters$pi.stream.power <-
         with(parameters, 9806 * pi.depth * pi.discharge * pi.gradient)
     parameters$unit.stream.power <- with(parameters, stream.power
                                          / base.channel.width.distance)
@@ -372,34 +383,43 @@ model.calculation <- function(parameters, gradient=NULL, pi.gradient=NULL,
     return(parameters)
 }
 
-MCCC.barplot <- function(df, arg.names=NULL, main='', xlab='', ylab='',
-                         fname=NULL){
-    colours=c(
-        MCCC.green = '#395624',
-        MCCC.blue = '#5876b0',
-        MCCC.brown = '#6b2223',
-        MCCC.teal = '#1f6e6e',
-        MCCC.purple = '#6647a0',
-        MCCC.grey = '#4e4e4e'
-    )
-    if(!is.null(fname)){ svg(fname, height=4, width=10) }
-    if(ncol(df)>1){ colours <- colours[1:ncol(df)]
-    } else { colours <- colours[1] }
-    plot.new()
-    barplot(height=t(as.matrix(df)), col=colours, beside=T,
-            names.arg=arg.names, cex.names=0.5, space=c(0.2,1), xlab=xlab,
-            ylab=ylab, main=main, border=NA)
-    legend('topleft', legend=c('pre-intervention', 'post-intervention'), fill=colours[1:2], bty='n', border=NA)
-    if(!is.null(fname)){ dev.off() }
+calculate.gradient <- function(shr, pi=FALSE, rowname.var='site.code'){
+    ### Uses rownames and vectors specifying US and DS sites to calculate
+    ### gradients
+    if(is.character(rowname.var)){
+        rownames(shr) <- shr[[rowname.var]]}
+    out <- numeric()
+    if(pi){
+        height <- 'spill.elevation'
+    } else { height <- 'thalweg.elevation' }
+    for( i in 1:nrow(shr) ){
+        us.height <- shr[shr[i, 'us.step.for.grad'], height]
+        ds.height <- shr[shr[i, 'ds.step.for.grad'], height]
+        run <- abs(
+            shr[shr[i, 'us.step.for.grad'], 'distance.to.bottom'] -
+            shr[shr[i, 'ds.step.for.grad'], 'distance.to.bottom']
+        )
+        grad <- (us.height - ds.height) / run
+        out <- c(out, grad)
+    }
+    if(any(is.na(out))){
+        warning(paste('Gradients were not calculated for the',
+                      'following sites:',
+                      paste(rownames(shr)[is.na(out)], collapse=', '),
+                      'Check that variables us.step.for.grad and',
+                      'ds.step.for.grad are specified and refer to',
+                      'other rows of the table.'
+                      ))
+    }
+    return(out)
 }
 
 ### From here down the functions defined relate to the construction of thalweg
-### graphs
-
+### diagrams
 
 ### This function draws vertical lines on an existing R plot
 draw.vertical.lines <- function(x, y.bot, y.top, colour='#5876b0', lwd=1){
-    stopifnot(all(length(x) == length(y.bot), length(x) == length(y.top))) 
+    stopifnot(all(length(x) == length(y.bot), length(x) == length(y.top)))
     for (i in 1:length(x)) {
         l <- rbind(c(x[i], y.bot[i]),
                    c(x[i], y.top[i])
@@ -412,7 +432,7 @@ draw.vertical.lines <- function(x, y.bot, y.top, colour='#5876b0', lwd=1){
 draw.horizontal.lines <- function(x.left, x.right, y, colour='#5876b0', lwd=1,
                                   ARROWS=FALSE){
     stopifnot(all(length(x.left) == length(y),
-                  length(x.left) == length(x.right))) 
+                  length(x.left) == length(x.right)))
     for (i in 1:length(y)) {
         l <- rbind(c(x.left[i], y[i]),
                    c(x.right[i], y[i])
@@ -431,7 +451,7 @@ draw.levels.chart <- function(input.data.frame,
                               catchment.name='unnamed catchment', source.ref='',
                               output.dir='.'){
     ### input.data.frame must have the following fields:
-    attach(input.data.frame)    
+    attach(input.data.frame)
     ### calculate the extents of the chart
     height <- max(c(thalweg.elevation, topbank.elevation))
     y.top <- max(c(thalweg.elevation, spill.elevation, topbank.elevation))
@@ -466,7 +486,7 @@ draw.levels.chart <- function(input.data.frame,
          adj=c(-0.2,1.2))
     ## This draws vertical lines proportional in height to the structures:
     draw.vertical.lines(distance.to.bottom, thalweg.elevation, spill.elevation)
-    
+
     ## Check if sites are lower on the left or right of the page:
     if(thalweg.elevation[1] < thalweg.elevation[length(thalweg.elevation)]){
     ## This draws horizontal lines representing the backwater of each structure
@@ -488,16 +508,17 @@ draw.levels.chart <- function(input.data.frame,
     axis(1, at=c(0, tail(distance.to.bottom, 1)), col='#4e4e4e', lty=1,
          lwd=2, labels=F)
     ### Draw the Y axis
-    axis(2, at=c(y.bot, y.top), col='#4e4e4e', lty=1, lwd=2, labels=F)  
+    axis(2, at=c(y.bot, y.top), col='#4e4e4e', lty=1, lwd=2, labels=F)
     ### Turn off the SVG device
     dev.off()
+    detach(input.data.frame)
 }
 
 draw.sites.chart <- function(input.data.frame,
                               catchment.name='unnamed catchment', source.ref='',
                               output.dir='.'){
     ### input.data.frame must have the following fields:
-    attach(input.data.frame)    
+    attach(input.data.frame)
     ### calculate the extents of the chart
     height <- max(c(thalweg.elevation, topbank.elevation))
     y.top <- max(c(thalweg.elevation, spill.elevation, topbank.elevation))
@@ -545,10 +566,54 @@ draw.sites.chart <- function(input.data.frame,
     axis(1, at=c(0, tail(distance.to.bottom, 1)), col='#4e4e4e', lty=1,
          lwd=2, labels=F)
     ### Draw the Y axis
-    axis(2, at=c(y.bot, y.top), col='#4e4e4e', lty=1, lwd=2, labels=F)  
+    axis(2, at=c(y.bot, y.top), col='#4e4e4e', lty=1, lwd=2, labels=F)
     ### Turn off the SVG device
     dev.off()
+    detach(input.data.frame)
 }
+
+MCCC.barplot <- function(df, arg.names=NULL, main='', xlab='', ylab='',
+                         fname=NULL, Cex.Names=0.35){
+    colours=c(
+        MCCC.green = '#395624',
+        MCCC.blue = '#5876b0',
+        MCCC.brown = '#6b2223',
+        MCCC.teal = '#1f6e6e',
+        MCCC.purple = '#6647a0',
+        MCCC.grey = '#4e4e4e'
+    )
+    if(!is.null(fname)){ svg(fname, height=4, width=10) }
+    if(ncol(df)>1){ colours <- colours[1:ncol(df)]
+    } else { colours <- colours[1] }
+    plot.new()
+    barplot(height=t(as.matrix(df)), col=colours, beside=T,
+            names.arg=arg.names, cex.names=Cex.Names, space=c(0.2,1), xlab=xlab,
+            main=main, border=NA)
+    title(ylab=ylab, line = 2.5)
+    legend('topleft', legend=c('pre-intervention', 'post-intervention'), fill=colours[1:2], bty='n', border=NA)
+    if(!is.null(fname)){ dev.off() }
+}
+
+## MCCC.barplot <- function(df, arg.names=NULL, fname=NULL, ylab=NULL, ...){
+##     colours=c(
+##         MCCC.green = '#395624',
+##         MCCC.blue = '#5876b0',
+##         MCCC.brown = '#6b2223',
+##         MCCC.teal = '#1f6e6e',
+##         MCCC.purple = '#6647a0',
+##         MCCC.grey = '#4e4e4e'
+##     )
+##     print(paste(...))
+##     if(!is.null(fname)){ svg(fname, height=4, width=10) }
+##     if(ncol(df)>1){ colours <- colours[1:ncol(df)]
+##     } else { colours <- colours[1] }
+##     plot.new()
+##     barplot(height=t(as.matrix(df)), col=colours, beside=TRUE,
+##             names.arg=arg.names, border=NA, space=c(0.2,1), ...)
+##     title(ylab=ylab, line =-5)
+##     legend('topleft', legend=c('pre-intervention', 'post-intervention'), fill=colours[1:2], bty='n', border=NA)
+##     if(!is.null(fname)){ dev.off() }
+## }
 
 hydraulics.output <- function(hydraulics.data, width=10, height=4, legend.location='topleft'){
   output.dir <- paste('Hydraulics_',
@@ -557,31 +622,33 @@ hydraulics.output <- function(hydraulics.data, width=10, height=4, legend.locati
   write.csv(hydraulics.data, paste(output.dir, 'hydraulics_output.csv', sep=''))
   ### XSEC
   MCCC.barplot(hydrau[ ,c('xsec.area', 'pi.xsec.area')], hydrau$site.code, 'Cross Sectional Area', ylab=expression(paste("cross sectional area m"^"2", "")), xlab='Site', fname=paste(output.dir, 'Cross Sectional Area.svg', sep=''))
-               
+
                ### VELOCITY
-               MCCC.barplot(hydrau[ , c('velocity', 'pi.velocity')], 
-                            hydrau$site.code, 
-                            'Stream Velocity', 
+               MCCC.barplot(hydrau[ , c('velocity', 'pi.velocity')],
+                            hydrau$site.code,
+                            'Stream Velocity',
                             ylab=expression(paste("Stream Velocity ms"^"-1", "")),
-                            xlab='Site', 
+                            xlab='Site',
                             fname=paste(output.dir, 'Stream Velocity.svg', sep='')
                )
-               
+
                ### Discharge
-               MCCC.barplot(hydrau[ ,c('discharge', 'pi.discharge')], hydrau$site.code, 'Discharge', ylab=expression(paste("Discharge m"^"3", "s"^"-1", "")), xlab='Site', fname=paste(output.dir, 'Discharge.svg', sep=''))
-               
+  MCCC.barplot(hydrau[ ,c('discharge', 'pi.discharge')], hydrau$site.code, 'Discharge', ylab=expression(paste("Discharge m"^"3", "s"^"-1", "")), xlab='Site', fname=paste(output.dir, 'Discharge.svg', sep=''))
+
                ### Shear Stress
-               MCCC.barplot(hydrau[ ,c('traction', 'pi.traction')], hydrau$site.code, 'Shear Stress', ylab=expression(paste("Shear Stress N")), xlab='Site', fname=paste(output.dir, 'Shear Stress.svg', sep=''))
-               
+  MCCC.barplot(hydrau[ ,c('traction', 'pi.traction')], hydrau$site.code, 'Shear Stress', ylab=expression(paste("Shear Stress N")), xlab='Site', fname=paste(output.dir, 'Shear Stress.svg', sep=''))
+
                ### Stream Power
-               MCCC.barplot(hydrau[ ,c('stream.power', 'pi.stream.power')], hydrau$site.code, 'Stream Power', ylab=expression(paste("Stream Power W")), xlab='Site', fname=paste(output.dir, 'Stream Power.svg', sep=''))
-               
+  MCCC.barplot(hydrau[ ,c('stream.power', 'pi.stream.power')], hydrau$site.code, 'Stream Power', ylab=expression(paste("Stream Power W")), xlab='Site', fname=paste(output.dir, 'Stream Power.svg', sep=''))
+
                ### Unit Stream Power
-               MCCC.barplot(hydrau[ ,c('unit.stream.power', 'pi.unit.stream.power')], hydrau$site.code, 'Unit Stream Power', ylab=expression(paste("Unit Stream Power Wm"^"-2", "")), xlab='Site', fname=paste(output.dir, 'Unit Stream Power.svg', sep=''))
-  
-  ### Froude Number
+  MCCC.barplot(hydrau[ ,c('unit.stream.power', 'pi.unit.stream.power')], hydrau$site.code, 'Unit Stream Power', ylab=expression(paste("Unit Stream Power Wm"^"-2", "")), xlab='Site', fname=paste(output.dir, 'Unit Stream Power.svg', sep=''))
+
+### Froude Number
   MCCC.barplot(hydrau[ ,c('froude.number', 'pi.froude.number')], hydrau$site.code, 'Froude Number', ylab=expression(paste("Froude Number")), xlab='Site', fname=paste(output.dir, 'Froude Number.svg', sep=''))
-  
+
+  ### Gradient
+  MCCC.barplot(hydrau[ ,c('gradient', 'pi.gradient')], hydrau$site.code, 'Gradient', ylab=expression(paste("Gradient mm"^"-1")), xlab='Site', fname=paste(output.dir, 'Gradient.svg', sep=''))
 }
 
-    
+
